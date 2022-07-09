@@ -1,9 +1,11 @@
-import * as fs from 'node:fs'; // fs/promises directly does not have this
+import { EventEmitter } from 'node:events';
+import * as fs from 'node:fs';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc.js';
 import mysql from 'mysql';
 import { WebSocket, WebSocketServer } from 'ws';
 import type { CQEvent } from './types.mjs';
+import { EchoPlugin } from './echo.mjs';
 
 dayjs.extend(utc);
 // although this log infrastructure is very primitive,
@@ -12,7 +14,7 @@ if (!fs.existsSync('logs')) { fs.mkdirSync('logs'); }
 let logdate = dayjs();
 function createlogfile() { return fs.createWriteStream(`logs/${logdate.format('YYYY-MM-DD')}.log`, { flags: 'a+' }); }
 let logfile = createlogfile();
-process.on('exit', () => { logfile.end(); });
+process.on('exit', () => { logfile.write('wabot stop'); logfile.end(); });
 function writelog(content: string) {
     const today = dayjs();
     if (!today.isSame(logdate, 'date')) {
@@ -24,6 +26,7 @@ function writelog(content: string) {
 }
 
 // these values should be provided in service configuration
+const SELFID = parseInt(process.env['SELFID']!);
 const ADMINID = parseInt(process.env['ADMINID']!);
 const GROUPID = parseInt(process.env['GROUPID']!);
 const DATABASEHOST = process.env['DATABASEHOST'];
@@ -50,27 +53,31 @@ const pool = mysql.createPool({
 });
 process.on('exit', () => { pool.end(); });
 
-class API {
+export class API extends EventEmitter {
+    public selfid: number = SELFID;
     public adminid: number = ADMINID;
     public groupid: number = GROUPID;
+
     public constructor(
         private readonly socket: WebSocket,
-    ) {}
+    ) { super(); }
 
     private send(action: string, parameters: any) {
         this.socket.send(JSON.stringify({ action, params: parameters, echo: 'echo' }));
     }
-    public send_private_message(user_id: number, message: string) {
-        this.send('send_private_msg', { user_id, message });
+    public send_private_message(user_id: number, message: string, complex: boolean = false) {
+        this.send('send_private_msg', { user_id, message, auto_escape: complex });
     }
-    public send_group_message(group_id: number, message: string) {
-        this.send('send_group_msg', { group_id, message });
+    public send_group_message(group_id: number, message: string, complex: boolean = false) {
+        this.send('send_group_msg', { group_id, message, auto_escape: complex });
     }
 }
 let api: API;
 
 const wss = new WebSocketServer({ port: 8080 });
 wss.on('connection', ws => {
+    api = new API(ws);
+
     ws.on('message', (data: ArrayBuffer) => {
         const eventstring = Buffer.from(data).toString();
         const event = JSON.parse(eventstring) as CQEvent;
@@ -113,12 +120,17 @@ wss.on('connection', ws => {
                     writelog(`[MESSAGE] error: ${err}`);
                 }
             });
+            api.emit('message', event);
         }
     });
 
-    api = new API(ws);
     api.send_private_message(api.adminid, '起！');
+
+    new EchoPlugin(api);
 });
 
 writelog('wabot start');
 console.log('wabot start');
+process.on('exit', () => {
+    console.log('wabot stop');
+});

@@ -6,7 +6,7 @@
   "main": "index.mjs",
   "scripts": {
     "build": "node_modules/typescript/bin/tsc --project tsconfig.json",
-    "deploy": "scp -i $SSH_IDENTITY build/index.mjs $REMOTE_DIR/index.mjs"
+    "deploy": "scp -i $SSH_IDENTITY build/* $REMOTE_DIR"
   },
   "author": "",
   "devDependencies": {
