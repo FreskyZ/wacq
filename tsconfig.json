@@ -1,0 +1,13 @@
+{
+	"compilerOptions": {
+		"strict": true,
+		"module": "ESNext",
+		"moduleResolution": "nodenext",
+		"noEmitOnError": true,
+		"lib": ["ESNext"],
+		"target": "esnext",
+		"outDir": "build"
+	},
+	"include": ["src/**/*"]
+}
+
