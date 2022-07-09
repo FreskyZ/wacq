@@ -5,12 +5,14 @@
   "description": "personal bot service based on go-cqhttp",
   "main": "index.mjs",
   "scripts": {
-    "start": "node_modules/typescript/bin/tsc --project tsconfig.json && node build/index.mjs"
+    "build": "node_modules/typescript/bin/tsc --project tsconfig.json",
+    "deploy": "scp -i $SSH_IDENTITY build/index.mjs $REMOTE_DIR/index.mjs"
   },
   "author": "",
   "devDependencies": {
     "@types/crypto-js": "^4.1.1",
     "@types/eslint": "^8.4.5",
+    "@types/mysql": "^2.15.21",
     "@types/node": "^18.0.3",
     "@types/ssh2-sftp-client": "^7.1.0",
     "@types/ws": "^8.5.3",
@@ -25,6 +27,7 @@
   },
   "dependencies": {
     "dayjs": "^1.11.3",
+    "mysql": "^2.18.1",
     "ws": "^8.8.0"
   }
 }

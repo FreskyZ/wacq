@@ -1,24 +1,41 @@
 
-interface CQEvent {
+export interface CQMetaEvent {
     time: number,
     self_id: number,
-    post_type: 'message' | 'request' | 'notice' | 'meta_event',
-    request_type?: string, // only when request
-    notice_type?: string,  // only when notice
-    // follows only when message
-    // not a tagged union because other types are simple and not used
+    post_type: 'meta_event',
+    meta_event_type: string,
+}
+
+export interface CQRequestEvent {
+    time: number,
+    self_id: number,
+    post_type: 'request',
+    request_type: string, 
+}
+
+export interface CQNoticeEvent {
+    time: number,
+    self_id: number,
+    post_type: 'notice',
+    notice_type: string,
+}
+
+export interface CQMessageEvent {
+    time: number,
+    self_id: number,
+    post_type: 'message',
     message_type: 'group' | 'private',
     sub_type: 'friend' | 'group' | 'group_self' | 'other' | 'normal' | 'anonymous' | 'notice',
     message_id: number,
     user_id: number,
-    message: any,
+    message: string,
     raw_message: string,
     font: number,
     group_id: number,
-    sender: MessageSender,
+    sender: CQMessageSender,
 }
 
-interface MessageSender {
+export interface CQMessageSender {
     user_id: number,
     nickname: string,
     sex: string,
@@ -29,3 +46,28 @@ interface MessageSender {
     role?: string,
     title?: string,
 }
+
+export interface CQResponseOkEvent {
+    status: 'ok',
+    retcode: 0,
+    data: any,
+    echo?: string,
+}
+
+export interface CQResponseAsyncEvent {
+    status: 'async',
+    retcode: 1,
+    echo?: string,
+}
+
+export interface CQResponseFailedEvent {
+    status: 'failed',
+    retcode: number,
+    msg: string,
+    workding: string,
+    data: any,
+    echo?: string,
+}
+
+export type CQResponseEvent = CQResponseOkEvent | CQResponseAsyncEvent | CQResponseFailedEvent;
+export type CQEvent = CQMetaEvent | CQRequestEvent | CQNoticeEvent | CQMessageEvent | CQResponseEvent;
