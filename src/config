@@ -1,13 +1,13 @@
 {
-    "selfid": "834677606",
-    "selfbotid": "2414368175",
-    "selfgroupid": "775230349",
+    "selfid": 0,
+    "selfbotid": 0,
+    "selfgroupid": 0,
     "database": {
-        "host": "localhost",
-        "port": 3306,
-        "user": "root",
-        "password": "123456",
-        "database": "WABOT",
+        "host": "",
+        "port": 0,
+        "user": "",
+        "password": "",
+        "database": "",
         "supportBigNumbers": true,
         "dateStrings": true,
         "charset": "utf8mb4"

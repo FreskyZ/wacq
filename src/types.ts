@@ -32,6 +32,7 @@ export interface CQMessageEvent {
     raw_message: string,
     font: number,
     group_id: number,
+    anonymous: any,
     sender: CQMessageSender,
 }
 

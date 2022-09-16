@@ -21,13 +21,13 @@ function writelog(content: string) {
         logdate = today;
         logfile = createlogfile();
     }
-    logfile.write(`[${dayjs().format('hh:mm:ss')}] ${content}\n`);
+    logfile.write(`[${dayjs().format('hh:mm:ss')}]${content}\n`);
 }
 
 const config: {
-    selfid: string,
-    selfbotid: string,
-    selfgroupid: string,
+    selfid: number,
+    selfbotid: number,
+    selfgroupid: number,
     database: mysql.PoolConfig,
 } = JSON.parse(fs.readFileSync('config', 'utf-8'));
 
@@ -87,13 +87,39 @@ wss.on('connection', ws => {
                 return;
             }
 
-            writelog(`[MESSAGE] ${eventstring}`);
-            // CREATE TABLE `Message` (
+            // duplicate and remove empty/common values
+            const logevent = { ...event };
+            delete logevent.time; // should be near log time and can be omitted
+            delete logevent.message; // nearly exactly same as raw_message and can be omitted
+            if (logevent.sub_type == 'normal') { delete logevent.sub_type; }
+            if (!logevent.anonymous) { delete logevent.anonymous; }
+            if (!logevent.font) { delete logevent.font; }
+            if (logevent.sender) {
+                const logsender = { ...logevent.sender };
+                if (!logsender.age) { delete logsender.age; }
+                if (!logsender.area) { delete logsender.area; }
+                if (logsender.user_id == logevent.user_id) { delete logevent.user_id; }
+                if (!logsender.level) { delete logsender.level; }
+                if (!logsender.card) { delete logsender.card; }
+                if (logsender.role == 'member') { delete logsender.role; }
+                if (logsender.sex == 'unknown') { delete logsender.sex; }
+                if (!logsender.title) { delete logsender.title; }
+                logevent.sender = logsender;
+            }
+            writelog(`[MESSAGE] ${JSON.stringify(logevent)}`);
+            
+            // ignore main account's main group message, because bot is also in this group
+            if (event.self_id == config.selfid && event.group_id == config.selfgroupid) {
+                return;
+            }
+
+            // CREATE TABLE `Message202209` (
             // `Id` BIGINT NOT NULL,
             // `Time` DATETIME NOT NULL,
             // `Type` VARCHAR(20) NULL,
             // `UserId` BIGINT NOT NULL,
             // `UserName` VARCHAR(100) NULL,
+            // `NickName` VARCHAR(100) NULL,
             // `Content` TEXT NULL,
             // `RawContent` TEXT NULL,
             // `GroupId` BIGINT NULL,
@@ -101,14 +127,16 @@ wss.on('connection', ws => {
             // );
             // SELECT `Time`, `UserName`, `GroupId`, REPLACE(SUBSTRING(`Content`, 1, 16), '\n', '') `Content` FROM `Message` ORDER BY `Time`;
             // SELECT * FROM `Message` INTO OUTFILE '/var/lib/mysql-files/message.csv' FIELDS ENCLOSED BY '"' TERMINATED BY ';' ESCAPED BY '"' LINES TERMINATED BY '\n';
-            pool.query('INSERT INTO `Message` (`Id`, `Time`, `Type`, `UserId`, `UserName`, `Content`, `RawContent`, `GroupId`) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [
+            pool.query('INSERT INTO `Message202209` (`Id`, `Time`, `Type`, `UserId`, `UserName`, `NickName`, `Content`, `RawContent`, `GroupId`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [
                 event.message_id,
                 dayjs.unix(event.time).format('YYYY-MM-DD HH:mm:ss'),
                 event.sub_type,
                 event.user_id,
                 event.sender?.nickname,
+                event.sender?.card,
                 event.message,
-                event.raw_message,
+                // remove raw message from database if they are same
+                event.raw_message == event.message ? null : event.raw_message,
                 event.group_id,
             ], (err, _value, _fields) => {
                 if (err) {
