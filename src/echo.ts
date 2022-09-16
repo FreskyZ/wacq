@@ -1,5 +1,5 @@
-import { API } from './index.mjs';
-import type { CQMessageEvent } from './types.mjs';
+import { API } from './index';
+import type { CQMessageEvent } from './types';
 
 export class EchoPlugin {
     public constructor(

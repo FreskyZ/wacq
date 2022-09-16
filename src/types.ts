@@ -24,7 +24,7 @@ export interface CQMessageEvent {
     time: number,
     self_id: number,
     post_type: 'message',
-    message_type: 'group' | 'private',
+    message_type: 'group' | 'private' | 'guild',
     sub_type: 'friend' | 'group' | 'group_self' | 'other' | 'normal' | 'anonymous' | 'notice',
     message_id: number,
     user_id: number,
