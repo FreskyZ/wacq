@@ -4,6 +4,9 @@ import * as dayjs from 'dayjs';
 import * as utc from 'dayjs/plugin/utc';
 import * as mysql from 'mysql';
 import { WebSocket, WebSocketServer } from 'ws';
+import { initializeWebInterface, shutdownWebInterface } from './api-impl';
+import type { Message as APIMessage } from './api-decl/types';
+import { query, initializePool } from './database';
 import type { CQEvent } from './types';
 
 dayjs.extend(utc);
@@ -31,16 +34,44 @@ const config: {
     database: mysql.PoolConfig,
 } = JSON.parse(fs.readFileSync('config', 'utf-8'));
 
-const pool = mysql.createPool({
-    ...config.database,
-    typeCast: (field, next) => {
-        if (field.type == 'BIT' && field.length == 1) {
-            return field.buffer()![0] == 1;
+initializePool(config.database);
+
+interface DBMessage {
+    Id: number,
+    Time: string,
+    UserId: number,
+    UserName: string,
+    NickName: string,
+    Content: string,
+}
+// temp web interface impl
+initializeWebInterface({
+    default: {
+        getRecentGroups: async () => {
+            const { value }: { value: { GroupId: number }[] } = await query('SELECT DISTINCT `GroupId` FROM `Message202209`;');
+            return value.map(v => v.GroupId);
+        },
+        getRecentPrivates: async () => {
+            return [2];
+        },
+        getGroupRecentMessages: async (_ctx, groupId) => {
+            // I completely don't understand why if missing the type assertion,
+            // mouse hover, cursor stop (highlight property def and use) and akari work correctly for 'value' variable but still gives red underline
+            const { value }: { value: DBMessage[] } = await query<DBMessage[]>(
+                'SELECT `Id`, `Time`, `UserId`, `UserName`, `NickName`, `Content` FROM `Message202209` WHERE `GroupId` = ? ORDER BY `Time` DESC LIMIT 100;', groupId);
+            return value.map<APIMessage>(m => ({ id: m.Id, sender: `${m.NickName ?? m.UserName} (${m.UserId}, ${m.UserName}) at ${m.Time}`, content: m.Content }));
+        },
+        getPrivateRecentMessages: async (_ctx, _privateId) => {
+            return [];
+        },
+        sendGroupMessage: async (_ctx, message) => {
+            return message;
+        },
+        sendPrivateMessage: async (_ctx, message) => {
+            return message;
         }
-        return next();
-    },
+    }
 });
-process.on('exit', () => { pool.end(); });
 
 export class API extends EventEmitter {
     public constructor(
@@ -127,7 +158,7 @@ wss.on('connection', ws => {
             // );
             // SELECT `Time`, `UserName`, `GroupId`, REPLACE(SUBSTRING(`Content`, 1, 16), '\n', '') `Content` FROM `Message` ORDER BY `Time`;
             // SELECT * FROM `Message` INTO OUTFILE '/var/lib/mysql-files/message.csv' FIELDS ENCLOSED BY '"' TERMINATED BY ';' ESCAPED BY '"' LINES TERMINATED BY '\n';
-            pool.query('INSERT INTO `Message202209` (`Id`, `Time`, `Type`, `UserId`, `UserName`, `NickName`, `Content`, `RawContent`, `GroupId`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [
+            query('INSERT INTO `Message202209` (`Id`, `Time`, `Type`, `UserId`, `UserName`, `NickName`, `Content`, `RawContent`, `GroupId`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 event.message_id,
                 dayjs.unix(event.time).format('YYYY-MM-DD HH:mm:ss'),
                 event.sub_type,
@@ -138,11 +169,7 @@ wss.on('connection', ws => {
                 // remove raw message from database if they are same
                 event.raw_message == event.message ? null : event.raw_message,
                 event.group_id,
-            ], (err, _value, _fields) => {
-                if (err) {
-                    writelog(`[MESSAGE] error: ${err}`);
-                }
-            });
+            ).catch(error => writelog(`[MESSAGE] error: ${error}`));
             api.emit('message', event);
         } else {
             writelog(`[UNKNOWN] ${eventstring}`);
@@ -157,23 +184,32 @@ wss.on('error', error => {
     writelog('wss error: ' + JSON.stringify(error));
 });
 
+let shuttingdown = false;
 function shutdown() {
+    if (shuttingdown) return; shuttingdown = true; // prevent reentry
+    
     for (const client of wss.clients) {
         client.close();
     }
-    wss.close(error => {
-        if (error) { 
-            writelog(`close websocket server error: ${error.message}`);
-            process.exit(102);
-        } else {
-            writelog('wacq start');
-            console.log('wacq stop');
-            process.exit(0);
-        }
+
+    // wait all server close
+    Promise.all([
+        shutdownWebInterface(),
+        new Promise<void>((resolve, reject) => wss.close(error => {
+            if (error) { console.log(`failed to close websocket server: ${error.message}`); reject(); }
+            else { resolve(); }
+        })),
+    ]).then(() => {
+        writelog('wacq core shutdown')
+        console.log('wacq core shutdown');
+        process.exit(0);
+    }, () => {
+        console.log('wacq core shutdown with error');
+        process.exit(102);
     });
 }
 
-writelog('wacq start');
-console.log('wacq start');
+writelog('wacq core start');
+console.log('wacq core start');
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
