@@ -3,19 +3,31 @@ main
     max-width: 640px
     height: 100vh
     margin: 0 auto
+    overflow-x: hidden
+    padding: 0 12px 0 8px
 
     header
         font-size: 24px
         font-family: sans-serif
         margin-top: 8px
+        
+    input.ant-input
+        width: calc(100% - 60px)
 
     .message-container
         background: #30303010
         padding: 4px
         border-radius: 4px
-        margin-top: 8px
+        margin-top: 4px
         >.sender
             font-size: 12px
         img
             max-width: 300px
             max-height: 300px
+
+@media (prefers-color-scheme: dark)
+    main
+        background-color: #303030
+        .message-container
+            color: #cfcfcf
+            background-color: #3f3f3f
