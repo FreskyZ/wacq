@@ -5,7 +5,8 @@ import * as utc from 'dayjs/plugin/utc';
 import * as mysql from 'mysql';
 import { WebSocket, WebSocketServer } from 'ws';
 import { query, setupDatabaseConnection } from '../adk/database';
-import { setupWebInterface, shutdownWebInterface } from '../api/server';
+import { setupWebInterface, shutdownWebInterface } from '../adk/api-server';
+import { dispatch } from '../api/server';
 import type { Message as APIMessage } from '../api/types';
 import type { CQEvent } from './types';
 
@@ -46,7 +47,7 @@ interface DBMessage {
     Content: string,
 }
 // temp web interface impl
-setupWebInterface(config.socketpath,  {
+setupWebInterface(config.socketpath, dispatch, {
     default: {
         getRecentGroups: async () => {
             const { value }: { value: { GroupId: number }[] } = await query('SELECT DISTINCT `GroupId` FROM `Message202209`;');
@@ -71,7 +72,7 @@ setupWebInterface(config.socketpath,  {
         },
         sendPrivateMessage: async (_ctx, message) => {
             return message;
-        }
+        },
     }
 });
 

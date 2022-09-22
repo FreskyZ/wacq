@@ -3,33 +3,17 @@
 // Changes to this file may cause incorrect behavior and will be lost if the code is regenerated.
 //-----------------------------------------------------------------------------------------------
 
-import * as fs from 'fs';
-import * as net from 'net';
 import { FineError } from '../../adk/error';
-import { ForwardContext, setupServer, shutdownServer } from '../../adk/api-server';
+import { ForwardContext } from '../../adk/api-server';
 import { DefaultImpl, dispatch as dispatchDefault } from './default';
 
 export interface Impl {
     default: DefaultImpl,
 }
 
-async function dispatch(ctx: ForwardContext, impl: Impl) {
+export async function dispatch(ctx: ForwardContext, impl: Impl) {
     if (!ctx.path.startsWith('/v1')) { throw new FineError('not-found', 'invalid invocation version'); }
     const path = ctx.path.substring(3);
     if (path.startsWith('/default/')) { return await dispatchDefault(ctx, impl.default); }
     throw new FineError('not-found', 'invalid invocation');
-}
-
-let server: net.Server;
-const connections: net.Socket[] = [];
-export function setupWebInterface(socketpath: string, impl: Impl) {
-    server = net.createServer();
-    setupServer(server, connections, dispatch, impl);
-    if (fs.existsSync(socketpath)) {
-        fs.unlinkSync(socketpath);
-    }
-    server.listen(socketpath);
-}
-export function shutdownWebInterface(): Promise<void> {
-    return shutdownServer(server, connections);
 }
