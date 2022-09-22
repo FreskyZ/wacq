@@ -3,7 +3,7 @@
 // Changes to this file may cause incorrect behavior and will be lost if the code is regenerated.
 //-----------------------------------------------------------------------------------------------
 
-import { get, post } from './common';
+import { get, post } from '../adk/api-client';
 import type { Message } from './types';
 
 export const $default = {

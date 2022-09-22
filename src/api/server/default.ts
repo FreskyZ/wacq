@@ -3,9 +3,10 @@
 // Changes to this file may cause incorrect behavior and will be lost if the code is regenerated.
 //-----------------------------------------------------------------------------------------------
 
-import { DispatchContext, Context, MyError } from './common';
-import { validateId, validateBody } from './common';
-import type { Message } from '../api-decl/types';
+import { FineError } from '../../adk/error';
+import { ForwardContext, Context } from '../../adk/api-server';
+import { validateId, validateBody } from '../../adk/api-server';
+import type { Message } from '../types';
 
 export interface DefaultImpl {
     getRecentPrivates: (ctx: Context) => Promise<number[]>,
@@ -16,7 +17,7 @@ export interface DefaultImpl {
     sendGroupMessage: (ctx: Context, message: Message) => Promise<Message>,
 }
 
-export async function dispatch(ctx: DispatchContext, impl: DefaultImpl): Promise<void> {
+export async function dispatch(ctx: ForwardContext, impl: DefaultImpl): Promise<void> {
     let match: RegExpExecArray;
     const methodPath = `${ctx.method} ${ctx.path.slice(11)}`;
 
@@ -47,5 +48,5 @@ export async function dispatch(ctx: DispatchContext, impl: DefaultImpl): Promise
         return;
     }
 
-    throw new MyError('not-found', 'invalid invocation');
+    throw new FineError('not-found', 'invalid invocation');
 }

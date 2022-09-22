@@ -5,30 +5,30 @@
 
 import * as fs from 'fs';
 import * as net from 'net';
-import { DispatchContext, MyError } from './common';
-import { setupServer, shutdownServer } from './common';
+import { FineError } from '../../adk/error';
+import { ForwardContext, setupServer, shutdownServer } from '../../adk/api-server';
 import { DefaultImpl, dispatch as dispatchDefault } from './default';
 
 export interface Impl {
     default: DefaultImpl,
 }
 
-async function dispatch(ctx: DispatchContext, impl: Impl) {
-    if (!ctx.path.startsWith('/v1')) { throw new MyError('not-found', 'invalid invocation version'); }
+async function dispatch(ctx: ForwardContext, impl: Impl) {
+    if (!ctx.path.startsWith('/v1')) { throw new FineError('not-found', 'invalid invocation version'); }
     const path = ctx.path.substring(3);
     if (path.startsWith('/default/')) { return await dispatchDefault(ctx, impl.default); }
-    throw new MyError('not-found', 'invalid invocation');
+    throw new FineError('not-found', 'invalid invocation');
 }
 
 let server: net.Server;
 const connections: net.Socket[] = [];
-export function initializeWebInterface(impl: Impl) {
+export function setupWebInterface(socketpath: string, impl: Impl) {
     server = net.createServer();
     setupServer(server, connections, dispatch, impl);
-    if (fs.existsSync('/tmp/fine-wacq.socket')) {
-        fs.unlinkSync('/tmp/fine-wacq.socket');
+    if (fs.existsSync(socketpath)) {
+        fs.unlinkSync(socketpath);
     }
-    server.listen('/tmp/fine-wacq.socket');
+    server.listen(socketpath);
 }
 export function shutdownWebInterface(): Promise<void> {
     return shutdownServer(server, connections);

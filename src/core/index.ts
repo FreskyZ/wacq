@@ -4,9 +4,9 @@ import * as dayjs from 'dayjs';
 import * as utc from 'dayjs/plugin/utc';
 import * as mysql from 'mysql';
 import { WebSocket, WebSocketServer } from 'ws';
-import { initializeWebInterface, shutdownWebInterface } from './api-impl';
-import type { Message as APIMessage } from './api-decl/types';
-import { query, initializePool } from './database';
+import { query, setupDatabaseConnection } from '../adk/database';
+import { setupWebInterface, shutdownWebInterface } from '../api/server';
+import type { Message as APIMessage } from '../api/types';
 import type { CQEvent } from './types';
 
 dayjs.extend(utc);
@@ -32,9 +32,10 @@ const config: {
     selfbotid: number,
     selfgroupid: number,
     database: mysql.PoolConfig,
+    socketpath: string,
 } = JSON.parse(fs.readFileSync('config', 'utf-8'));
 
-initializePool(config.database);
+setupDatabaseConnection(config.database);
 
 interface DBMessage {
     Id: number,
@@ -45,7 +46,7 @@ interface DBMessage {
     Content: string,
 }
 // temp web interface impl
-initializeWebInterface({
+setupWebInterface(config.socketpath,  {
     default: {
         getRecentGroups: async () => {
             const { value }: { value: { GroupId: number }[] } = await query('SELECT DISTINCT `GroupId` FROM `Message202209`;');
@@ -59,12 +60,13 @@ initializeWebInterface({
             // mouse hover, cursor stop (highlight property def and use) and akari work correctly for 'value' variable but still gives red underline
             const { value }: { value: DBMessage[] } = await query<DBMessage[]>(
                 'SELECT `Id`, `Time`, `UserId`, `UserName`, `NickName`, `Content` FROM `Message202209` WHERE `GroupId` = ? ORDER BY `Time` DESC LIMIT 100;', groupId);
-            return value.map<APIMessage>(m => ({ id: m.Id, sender: `${m.NickName ?? m.UserName} (${m.UserId}, ${m.UserName}) at ${m.Time}`, content: m.Content }));
+            return value.map<APIMessage>(m => ({ id: m.Id, sender: `${m.NickName || m.UserName} (${m.UserId}, ${m.UserName}) at ${m.Time}`, content: m.Content }));
         },
         getPrivateRecentMessages: async (_ctx, _privateId) => {
             return [];
         },
         sendGroupMessage: async (_ctx, message) => {
+            mainapi.send_group_message(message.groupId, message.content);
             return message;
         },
         sendPrivateMessage: async (_ctx, message) => {
@@ -88,11 +90,19 @@ export class API extends EventEmitter {
         this.send('send_group_msg', { group_id, message, auto_escape: complex });
     }
 }
-let api: API;
+let mainapi: API;
+// @ts-ignore not used for now
+let botoapi: API;
 
 const wss = new WebSocketServer({ port: 8080 });
-wss.on('connection', ws => {
-    api = new API(ws);
+wss.on('connection', (ws, underlying) => {
+
+    if (underlying.url == '/main/') {
+        mainapi = new API(ws);
+    } else if (underlying.url == '/boto/') {
+        botoapi = new API(ws);
+    }
+    writelog('connected, url: ' + underlying.url);
 
     ws.on('message', (data: ArrayBuffer) => {
         const eventstring = Buffer.from(data).toString();
@@ -112,7 +122,7 @@ wss.on('connection', ws => {
                 return;
             }
             writelog(`[NOTICE] ${eventstring}`);
-        } else if (event.post_type == 'message') {
+        } else if (event.post_type == 'message' || event.post_type == 'message_sent') {
             if (event.message_type == 'guild') {
                 // completely discard guild message
                 return;
@@ -139,8 +149,8 @@ wss.on('connection', ws => {
             }
             writelog(`[MESSAGE] ${JSON.stringify(logevent)}`);
             
-            // ignore main account's main group message, because bot is also in this group
-            if (event.self_id == config.selfid && event.group_id == config.selfgroupid) {
+            // ignore bot account's main group message, because bot is also in this group
+            if (event.self_id == config.selfbotid && event.group_id == config.selfgroupid) {
                 return;
             }
 
@@ -170,15 +180,11 @@ wss.on('connection', ws => {
                 event.raw_message == event.message ? null : event.raw_message,
                 event.group_id,
             ).catch(error => writelog(`[MESSAGE] error: ${error}`));
-            api.emit('message', event);
+            // api.emit('message', event);
         } else {
             writelog(`[UNKNOWN] ${eventstring}`);
         }
     });
-
-    // api.send_private_message(api.adminid, '起！');
-
-    // new EchoPlugin(api);
 });
 wss.on('error', error => {
     writelog('wss error: ' + JSON.stringify(error));

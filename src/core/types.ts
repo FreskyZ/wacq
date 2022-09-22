@@ -23,7 +23,7 @@ export interface CQNoticeEvent {
 export interface CQMessageEvent {
     time: number,
     self_id: number,
-    post_type: 'message',
+    post_type: 'message' | 'message_sent',
     message_type: 'group' | 'private' | 'guild',
     sub_type: 'friend' | 'group' | 'group_self' | 'other' | 'normal' | 'anonymous' | 'notice',
     message_id: number,
