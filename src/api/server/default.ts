@@ -5,14 +5,14 @@
 
 import { FineError } from '../../adk/error';
 import { ForwardContext, Context } from '../../adk/api-server';
-import { validateId, validateBody } from '../../adk/api-server';
+import { validateId, validateNumber, validateBody } from '../../adk/api-server';
 import type { Message } from '../types';
 
 export interface DefaultImpl {
     getRecentPrivates: (ctx: Context) => Promise<number[]>,
     getRecentGroups: (ctx: Context) => Promise<number[]>,
     getPrivateRecentMessages: (privateId: number, ctx: Context) => Promise<Message[]>,
-    getGroupRecentMessages: (groupId: number, ctx: Context) => Promise<Message[]>,
+    getGroupRecentMessages: (groupId: number, lastTime: number, ctx: Context) => Promise<Message[]>,
     sendPrivateMessage: (message: Message, ctx: Context) => Promise<Message>,
     sendGroupMessage: (message: Message, ctx: Context) => Promise<Message>,
 }
@@ -33,8 +33,8 @@ export async function dispatch(ctx: ForwardContext, impl: DefaultImpl): Promise<
         ctx.body = await impl.getPrivateRecentMessages(validateId('privateId', match.groups['privateId']), ctx.state);
         return;
     }
-    match = /^GET \/groupRecentMessages\/(?<groupId>\d+)$/.exec(methodPath); if (match) {
-        ctx.body = await impl.getGroupRecentMessages(validateId('groupId', match.groups['groupId']), ctx.state);
+    match = /^GET \/groupRecentMessages\/(?<groupId>\d+)\/(?<lastTime>\d+)$/.exec(methodPath); if (match) {
+        ctx.body = await impl.getGroupRecentMessages(validateId('groupId', match.groups['groupId']), validateNumber('lastTime', match.groups['lastTime']), ctx.state);
         return;
     }
     match = /^POST \/sendPrivateMessage$/.exec(methodPath); if (match) {

@@ -1,7 +1,7 @@
 // @ts-ignore
 import React from 'react';
 import { useState, useEffect, useRef } from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import { ConfigProvider, Select, Button, Input, message } from 'antd';
 import { $default as api } from '../api/client';
 import { Message } from '../api/types';
@@ -37,7 +37,7 @@ function App() {
     const [groups, setGroups] = useState<number[]>([0]);
     const [messages, setMessages] = useState<Message[]>([]);
     const [editingMessage, setEditingMessage] = useState<string>("");
-    const callbackref = useRef<() => void>();
+    const callbackref = useRef<(switchGroup: boolean) => void>();
 
     useEffect(() => {
         api.getRecentGroups().then(groups => setGroups(groups));
@@ -48,18 +48,29 @@ function App() {
     }, [groups]);
 
     useEffect(() => {
-        handleRefresh();
+        handleRefresh(true);
     }, [group]);
 
-    function handleRefresh() {
+    function handleRefresh(switchGroup: boolean) {
         if (group != 0 && document.visibilityState == 'visible') {
-            api.getGroupRecentMessages(group).then(messages => setMessages(messages));
+            api.getGroupRecentMessages(group, messages.length && !switchGroup ? messages[0].time : 0).then(newMessages => {
+                if (switchGroup) {
+                    messages.splice(0, 100);
+                }
+                for (const newMessage of newMessages) {
+                    if (!messages.some(m => m.id == newMessage.id)) {
+                        messages.push(newMessage);
+                    }
+                }
+                messages.sort((m1, m2) => m2.time - m1.time); // BY TIME DESC
+                setMessages([...messages.slice(0, 100)]);
+            });
         }
     }
     callbackref.current = handleRefresh;
 
     useEffect(() => {
-        const id = setInterval(() => callbackref.current(), 12000);
+        const id = setInterval(() => callbackref.current(false), 5000);
         return () => clearInterval(id);
     }, []);
 
@@ -76,7 +87,6 @@ function App() {
         <Select value={group} onChange={e => setGroup(e)}>
             {groups.map(g => <Select.Option key={g} value={g}>{g}</Select.Option>)}
         </Select>
-        <Button className='refresh' onClick={() => handleRefresh()}>刷新</Button>
         <div className='send-container'>
             <Input value={editingMessage} onChange={e => setEditingMessage(e.target.value)} onPressEnter={handleSend} />
             <Button disabled={editingMessage.trim().length == 0} onClick={handleSend}>发送</Button>
@@ -85,5 +95,4 @@ function App() {
     </>;
 }
 
-// antd@4 does not support react@18, for now
-ReactDOM.render(<ConfigProvider autoInsertSpaceInButton={false}><App /></ConfigProvider>, document.querySelector('main'));
+createRoot(document.querySelector('main')).render(<ConfigProvider autoInsertSpaceInButton={false}><App /></ConfigProvider>);

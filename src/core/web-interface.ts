@@ -1,4 +1,5 @@
-import { query } from '../adk/database';
+import * as dayjs from 'dayjs';
+import { query, QueryDateTimeFormat } from '../adk/database';
 import { setupAPIServer, shutdownAPIServer } from '../adk/api-server'
 import { dispatch as dispatchImpl } from "../api/server";
 import type * as api from '../api/types';
@@ -23,12 +24,19 @@ async function getRecentGroups() {
 async function getRecentPrivates() {
     return [2];
 }
-async function getGroupRecentMessages(groupId: number): Promise<api.Message[]> {
+async function getGroupRecentMessages(groupId: number, lastTimestamp: number): Promise<api.Message[]> {
+    // 10 seconds more, official server/backend may be occasionally slow for random message
+    const afterTime = dayjs.unix(lastTimestamp).subtract(10, 'seconds').format(QueryDateTimeFormat.datetime);
     // I completely don't understand why if missing the type assertion,
     // mouse hover, cursor stop (highlight property def and use) and akari work correctly for 'value' variable but still gives red underline
     const { value }: { value: DBMessage[] } = await query<DBMessage[]>(
-        'SELECT `Id`, `Time`, `UserId`, `UserName`, `NickName`, `Content` FROM `Message202209` WHERE `GroupId` = ? ORDER BY `Time` DESC LIMIT 100;', groupId);
-    return value.map<api.Message>(m => ({ id: m.Id, sender: `${m.NickName || m.UserName} (${m.UserId}, ${m.UserName}) at ${m.Time}`, content: m.Content }));
+        'SELECT `Id`, `Time`, `UserId`, `UserName`, `NickName`, `Content` FROM `Message202209` WHERE `GroupId` = ? AND `Time` > ? ORDER BY `Time` DESC LIMIT 100;', groupId, afterTime);
+    return value.map<api.Message>(m => ({
+        id: m.Id,
+        time: dayjs(m.Time, 'YYYY-MM-DD HH:mm:ss').unix(),
+        sender: `${m.NickName || m.UserName} (${m.UserId}, ${m.UserName}) at ${m.Time}`,
+        content: m.Content,
+    }));
 }
 async function getPrivateRecentMessages(): Promise<api.Message[]> {
     return [];
