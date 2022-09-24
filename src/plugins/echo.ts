@@ -1,5 +1,5 @@
-import { API } from './index';
-import type { CQMessageEvent } from './types';
+import { API } from '../core/index';
+import type { CQMessageEvent } from '../core/base-types';
 
 export class EchoPlugin {
     public constructor(

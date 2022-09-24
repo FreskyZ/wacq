@@ -11,10 +11,10 @@ import type { Message } from '../types';
 export interface DefaultImpl {
     getRecentPrivates: (ctx: Context) => Promise<number[]>,
     getRecentGroups: (ctx: Context) => Promise<number[]>,
-    getPrivateRecentMessages: (ctx: Context, privateId: number) => Promise<Message[]>,
-    getGroupRecentMessages: (ctx: Context, groupId: number) => Promise<Message[]>,
-    sendPrivateMessage: (ctx: Context, message: Message) => Promise<Message>,
-    sendGroupMessage: (ctx: Context, message: Message) => Promise<Message>,
+    getPrivateRecentMessages: (privateId: number, ctx: Context) => Promise<Message[]>,
+    getGroupRecentMessages: (groupId: number, ctx: Context) => Promise<Message[]>,
+    sendPrivateMessage: (message: Message, ctx: Context) => Promise<Message>,
+    sendGroupMessage: (message: Message, ctx: Context) => Promise<Message>,
 }
 
 export async function dispatch(ctx: ForwardContext, impl: DefaultImpl): Promise<void> {
@@ -30,20 +30,20 @@ export async function dispatch(ctx: ForwardContext, impl: DefaultImpl): Promise<
         return;
     }
     match = /^GET \/privateRecentMessages\/(?<privateId>\d+)$/.exec(methodPath); if (match) {
-        ctx.body = await impl.getPrivateRecentMessages(ctx.state, validateId('privateId', match.groups['privateId']));
+        ctx.body = await impl.getPrivateRecentMessages(validateId('privateId', match.groups['privateId']), ctx.state);
         return;
     }
     match = /^GET \/groupRecentMessages\/(?<groupId>\d+)$/.exec(methodPath); if (match) {
-        ctx.body = await impl.getGroupRecentMessages(ctx.state, validateId('groupId', match.groups['groupId']));
+        ctx.body = await impl.getGroupRecentMessages(validateId('groupId', match.groups['groupId']), ctx.state);
         return;
     }
     match = /^POST \/sendPrivateMessage$/.exec(methodPath); if (match) {
-        ctx.body = await impl.sendPrivateMessage(ctx.state, validateBody(ctx.body));
+        ctx.body = await impl.sendPrivateMessage(validateBody(ctx.body), ctx.state);
         ctx.status = 201;
         return;
     }
     match = /^POST \/sendGroupMessage$/.exec(methodPath); if (match) {
-        ctx.body = await impl.sendGroupMessage(ctx.state, validateBody(ctx.body));
+        ctx.body = await impl.sendGroupMessage(validateBody(ctx.body), ctx.state);
         ctx.status = 201;
         return;
     }
