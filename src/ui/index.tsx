@@ -8,6 +8,19 @@ import { Message } from '../api/types';
 
 // very primitive technology to add link to image
 function MessageContent({ content }: { content: string }) {
+    if (content.startsWith('[CQ:json')) {
+        const dataString = content.substring(14, content.length - 1);
+        let data: any = null;
+        try { data = JSON.parse(dataString); } catch { console.log('unrecognized data string', dataString); }
+        if (data && data.meta && data.meta.detail_1 && data.meta.detail_1.qqdocurl && data.meta.detail_1.title == '哔哩哔哩') {
+            let url: string = data.meta.detail_1.qqdocurl;
+            if (url.includes('?')) {
+                const index = url.indexOf('?');
+                url = url.substring(0, index);
+                return <a href={url} target='_blank' referrerPolicy='no-referrer'>{data.meta.detail_1.desc}</a>
+            }
+        }
+    }
     const splitre = /(\[CQ:(?:image|video),file=[\w\.]+,(?:subType=\d+,)?url=.*\])/g;
     const replacere = /\[CQ:(image|video),file=([\w\.]+),(?:subType=\d+,)?url=(.*)\]/g;
     const segments = content.split(splitre);
