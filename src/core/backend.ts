@@ -78,6 +78,20 @@ export interface ResponseFailedEvent {
 export type ResponseEvent = ResponseOkEvent | ResponseAsyncEvent | ResponseFailedEvent;
 export type Event = MetaEvent | RequestEvent | NoticeEvent | MessageEvent | ResponseEvent;
 
+// interface MyClassEvents {
+//     'add': (el: string, wasNew: boolean) => void;
+//     'delete': (changedCount: number) => void;
+//   }
+// declare interface MyClass {
+//     on<U extends keyof MyClassEvents>(
+//         event: U, listener: MyClassEvents[U]
+//     ): this;
+
+//     emit<U extends keyof MyClassEvents>(
+//         event: U, ...args: Parameters<MyClassEvents[U]>
+//     ): boolean;
+// }
+
 export declare interface Backend {
     call(action: 'send_private_msg', params: { user_id: number, message: string }): Promise<{ message_id: number }>;
     call(action: 'send_group_msg', params: { group_id: number, message: string }): Promise<{ message_id: number }>;
@@ -151,6 +165,9 @@ function handleBackendEvent(this: BackendConfig, payload: ArrayBuffer) {
         if (event.self_id == this.botoid && event.group_id == this.groupid) {
             return;
         }
+
+        event.message = event.message.replaceAll('&amp;', '&').replaceAll('&#91;', '[').replaceAll('&#93;', ']').replaceAll('&#44;', ',');
+        event.raw_message = event.raw_message.replaceAll('&amp;', '&').replaceAll('&#91;', '[').replaceAll('&#93;', ']').replaceAll('&#44;', ',');
 
         // CREATE TABLE `Message202209` (
         // `Id` BIGINT NOT NULL,
