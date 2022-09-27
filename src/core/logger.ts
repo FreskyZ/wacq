@@ -9,7 +9,7 @@ import * as utc from 'dayjs/plugin/utc';
 //     import { log } from './logger';
 //     log.info("some message");
 //     log.error(some error);
-// log files in approot/log, name YYYYMMDD.log, preserve 1 week
+// log files in approot/logs, name YYYYMMDD.log, preserve 1 week
 //
 // and a special event log
 //    log.event(event);
@@ -37,8 +37,18 @@ class Logger {
     constructor(private readonly options: LoggerOptions) {}
 
     async init() {
+        if (this.handle) {
+            this.handle.close();
+        }
         this.handle = await fs.open(path.join(logsDirectory,
             `${this.time.format('YYYYMMDD')}${this.options.postfix}.log`), 'a');
+    }
+
+    async deinit() {
+        if (this.handle) {
+            this.flush();
+            this.handle.close();
+        }
     }
 
     async flush() {
@@ -107,7 +117,7 @@ export async function setupLog() {
     await Promise.all(Object.entries(loggers).map(([_, logger]) => logger.init()));
 }
 export async function shutdownLog() {
-    await Promise.all(Object.entries(loggers).map(([_, logger]) => logger.flush()));
+    await Promise.all(Object.entries(loggers).map(([_, logger]) => logger.deinit()));
 }
 // @ts-ignore again
 export const log: Record<Level, (content: string) => Promise<void>> =
