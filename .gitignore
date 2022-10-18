@@ -58,5 +58,12 @@ typings/
 .env
 
 .cache
-akari
 akaric
+
+# soft links, they contain absolute path
+script/targets/self.ts
+script/tools
+script/common.ts
+src/adk
+src/shared/admin.d.ts
+src/shared/auth.d.ts
