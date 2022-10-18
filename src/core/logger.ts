@@ -12,7 +12,7 @@ import * as utc from 'dayjs/plugin/utc';
 // log files in approot/logs, name YYYYMMDD.log, preserve 1 week
 //
 // and a special event log
-//    log.event(event);
+//     log.event(event);
 // in approot/log/event, name YYYYMMDD.log, preserve 1 month
 
 // because initialize require utc, while index do not use dayjs, so put it here
@@ -46,8 +46,8 @@ class Logger {
 
     async deinit() {
         if (this.handle) {
-            this.flush();
-            this.handle.close();
+            await this.flush();
+            await this.handle.close();
         }
     }
 
