@@ -22,7 +22,8 @@ async function getRecentGroups() {
     return value.map(v => v.GroupId);
 }
 async function getRecentPrivates() {
-    return [2];
+    const { value }: { value: { UserId: number }[] } = await query('SELECT DISTINCT `UserId` FROM `Message202209` WHERE `GroupId` IS NULL;');
+    return value.map(v => v.UserId);
 }
 async function getGroupRecentMessages(groupId: number, lastTimestamp: number): Promise<api.Message[]> {
     // 10 seconds more, official server/backend may be occasionally slow for random message
@@ -38,14 +39,23 @@ async function getGroupRecentMessages(groupId: number, lastTimestamp: number): P
         content: m.Content,
     }));
 }
-async function getPrivateRecentMessages(): Promise<api.Message[]> {
-    return [];
+async function getPrivateRecentMessages(privateId: number, lastTimestamp: number): Promise<api.Message[]> {
+    const afterTime = dayjs.unix(lastTimestamp).subtract(10, 'seconds').format(QueryDateTimeFormat.datetime);
+    const { value }: { value: DBMessage[] } = await query<DBMessage[]>(
+        'SELECT `Id`, `Time`, `UserId`, `UserName`, `NickName`, `Content` FROM `Message202209` WHERE `GroupId` IS NULL AND `UserId` = ? AND `Time` > ? ORDER BY `Time` DESC LIMIT 100;', privateId, afterTime);
+    return value.map<api.Message>(m => ({
+        id: m.Id,
+        time: dayjs(m.Time, 'YYYY-MM-DD HH:mm:ss').unix(),
+        sender: `${m.NickName || m.UserName} (${m.UserId}, ${m.UserName}) at ${m.Time}`,
+        content: m.Content,
+    }));
 }
 async function sendGroupMessage(message: api.Message) {
     backend.call('send_group_msg', { group_id: message.groupId, message: message.content });
     return message;
 }
 async function sendPrivateMessage(message: api.Message) {
+    backend.call('send_private_msg', { user_id: message.userId, message: message.content });
     return message;
 }
 

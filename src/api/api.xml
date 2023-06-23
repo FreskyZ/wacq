@@ -2,7 +2,7 @@
 <wacq-api version="1">
     <api name="getRecentPrivates" method="GET" path="/recentPrivates" return-type="number[]" />
     <api name="getRecentGroups" method="GET" path="/recentGroups" return-type="number[]" />
-    <api name="getPrivateRecentMessages" method="GET" path="/privateRecentMessages/{privateId:id}" return-type="Message[]" />
+    <api name="getPrivateRecentMessages" method="GET" path="/privateRecentMessages/{privateId:id}/{lastTime:number}" return-type="Message[]" />
     <api name="getGroupRecentMessages" method="GET" path="/groupRecentMessages/{groupId:id}/{lastTime:number}" return-type="Message[]" />
     <api name="sendPrivateMessage" method="POST" path="/sendPrivateMessage" body-type="Message" body-name="message" return-type="Message" />
     <api name="sendGroupMessage" method="POST" path="/sendGroupMessage" body-type="Message" body-name="message" return-type="Message" />

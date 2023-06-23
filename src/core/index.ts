@@ -15,7 +15,7 @@ const config: {
 setupLog().then(() => {
     setupDatabaseConnection(config.database);
     setupBackend(config.backend).then(() => {
-        setupWebInterface(config.socketpath);   
+        setupWebInterface(config.socketpath);
         log.info('wacq core start');
         console.log('wacq core start');
     });

@@ -45,29 +45,44 @@ function Messages({ messages }: { messages: Message[] }) {
     </div>;
 }
 
+type Entity = {
+    id: number,
+    type: 'group' | 'private',
+}
+
 function App() {
-    const [group, setGroup] = useState(0);
-    const [groups, setGroups] = useState<number[]>([0]);
+    const [entity, setEntity] = useState<Entity>(undefined);
+    const [entities, setEntities] = useState<Entity[]>([]);
     const [messages, setMessages] = useState<Message[]>([]);
+    const [messageDisabled, setMessageDisabled] = useState(false);
     const [editingMessage, setEditingMessage] = useState<string>("");
     const callbackref = useRef<(switchGroup: boolean) => void>();
 
     useEffect(() => {
-        api.getRecentGroups().then(groups => setGroups(groups));
+        Promise.all([
+            api.getRecentGroups(),
+            api.getRecentPrivates(),
+        ]).then(([groupIds, privateIds]) => setEntities([
+            ...groupIds.map<Entity>(id => ({ id, type: 'group' })),
+            ...privateIds.map<Entity>(id => ({ id, type: 'private' })),
+        ]));
     }, []);
 
     useEffect(() => {
-        setGroup(groups[0]);
-    }, [groups]);
+        setEntity(entities[0]);
+    }, [entities]);
 
     useEffect(() => {
         handleRefresh(true);
-    }, [group]);
+    }, [entity]);
 
-    function handleRefresh(switchGroup: boolean) {
-        if (group != 0 && document.visibilityState == 'visible') {
-            api.getGroupRecentMessages(group, messages.length && !switchGroup ? messages[0].time : 0).then(newMessages => {
-                if (switchGroup) {
+    function handleRefresh(switchEntity: boolean) {
+        if (typeof entity != 'undefined' && document.visibilityState == 'visible') {
+            (entity.type == 'group'
+                ? api.getGroupRecentMessages(entity.id, messages.length && !switchEntity ? messages[0].time : 0)
+                : api.getPrivateRecentMessages(entity.id, messages.length && !switchEntity ? messages[0].time : 0)
+            ).then(newMessages => {
+                if (switchEntity) {
                     messages.splice(0, 100);
                 }
                 for (const newMessage of newMessages) {
@@ -77,7 +92,7 @@ function App() {
                 }
                 messages.sort((m1, m2) => m2.time - m1.time); // BY TIME DESC
                 setMessages([...messages.slice(0, 100)]);
-            });
+            }, ex => { message.error(ex); });
         }
     }
     callbackref.current = handleRefresh;
@@ -89,20 +104,25 @@ function App() {
 
     function handleSend() {
         if (editingMessage.trim().length > 0) {
-            api.sendGroupMessage({ groupId: group, content: editingMessage.trim() }).then(() => {
+            setMessageDisabled(true);
+            (entity.type == 'group'
+                ? api.sendGroupMessage({ groupId: entity.id, content: editingMessage.trim() })
+                : api.sendPrivateMessage({ userId: entity.id, content: editingMessage.trim() })
+            ).then(() => {
                 setEditingMessage("");
+                setMessageDisabled(false);
             }, ex => { message.error(ex); });
         }
     }
 
     return <>
         <header>WACQ</header>
-        <Select value={group} onChange={e => setGroup(e)}>
-            {groups.map(g => <Select.Option key={g} value={g}>{g}</Select.Option>)}
+        <Select value={typeof entity == 'undefined' ? undefined : entity.id} onChange={(entityId: any) => setEntity(entities.find(e => e.id == entityId))}>
+            {entities.map(g => <Select.Option key={g.id} value={g.id}>{g.id}</Select.Option>)}
         </Select>
         <div className='send-container'>
-            <Input value={editingMessage} onChange={e => setEditingMessage(e.target.value)} onPressEnter={handleSend} />
-            <Button disabled={editingMessage.trim().length == 0} onClick={handleSend}>发送</Button>
+            <Input value={editingMessage} autoFocus={true} onChange={e => setEditingMessage(e.target.value)} onPressEnter={handleSend} />
+            <Button disabled={editingMessage.trim().length == 0 || messageDisabled} onClick={handleSend}>发送</Button>
         </div>
         <Messages messages={messages} />
     </>;

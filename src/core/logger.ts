@@ -15,6 +15,8 @@ import * as utc from 'dayjs/plugin/utc';
 //     log.event(event);
 // in approot/log/event, name YYYYMMDD.log, preserve 1 month
 
+// TODO learn from yabai/logger
+
 // because initialize require utc, while index do not use dayjs, so put it here
 dayjs.extend(utc);
 // logs are in logs directory, there is no meaning to configure it

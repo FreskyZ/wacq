@@ -236,7 +236,6 @@ async function renderHtmlTemplate(files: [js: string[], css: string[]], watching
 async function buildOnce(): Promise<void> {
     logInfo('akr', chalk`{cyan client}`);
     await eslint(`client`, 'browser', [`src/ui/**/*.ts`, `src/ui/**/*.tsx`]);
-    // mkdir(recursive)
 
     // promise 1: fcg -> tsc -> wpk, return js file list
     // note that returned list are both for ssh upload and html render, so source map is included so should be excluded from render html
@@ -308,10 +307,9 @@ async function buildOnce(): Promise<void> {
 function buildWatch(additionalHeader?: string) {
     additionalHeader = additionalHeader ?? '';
     logInfo(`akr${additionalHeader}`, chalk`watch {cyan client}`);
-    // mkdir(recursive)
 
     let [jsAssets, cssAssets]: [MyAsset[], MyAsset[]] = [[], []]; // assign new array in consider of the remove file issue
-    let jsHasChange = false; // js has change, if render is trigger by css, then only send reload-css, else send reload-js // this is kind of duplicate with webpackLastHash, design later
+    let jsHasChange = false; // js has change, if render is trigger by css, then only send reload-css, else send reload-all // this is kind of duplicate with webpackLastHash, design later
     const requestRender = watchvar(async () => {
         const thisRenderJsHasChange = jsHasChange; // in case flag changed during some operations
         jsHasChange = false;
@@ -323,7 +321,7 @@ function buildWatch(additionalHeader?: string) {
         if (jsAssets.length > 0) {
             if (await upload(jsAssets.concat(cssAssets).concat([html]), { filenames: false, additionalHeader })) {
                 await admin.core({ type: 'content', sub: { type: 'reload-static', key: config.appname } }, additionalHeader);
-                await admin.devpage(thisRenderJsHasChange ? 'reload-js' : 'reload-css', additionalHeader);
+                await admin.devpage(thisRenderJsHasChange ? 'reload-all' : 'reload-css', additionalHeader);
             }
         }
     });

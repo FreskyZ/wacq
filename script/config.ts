@@ -37,6 +37,6 @@ interface Config {
     codebook: string,
     ssh: { user: string, identity: string, passphrase: string },
     // tools/typescript rely on this
-    apps: { name: string, origin: string, devrepo: string, socket: string }[],
+    apps: { name: string, origin: string, socket: string }[],
 }
 export const config = JSON.parse(fs.readFileSync('akaric', 'utf-8')) as Config;

@@ -9,7 +9,7 @@ import type { Message } from './types';
 export const $default = {
     getRecentPrivates: (): Promise<number[]> => get(`/wacq/v1/default/recentPrivates`),
     getRecentGroups: (): Promise<number[]> => get(`/wacq/v1/default/recentGroups`),
-    getPrivateRecentMessages: (privateId: number): Promise<Message[]> => get(`/wacq/v1/default/privateRecentMessages/${privateId}`),
+    getPrivateRecentMessages: (privateId: number, lastTime: number): Promise<Message[]> => get(`/wacq/v1/default/privateRecentMessages/${privateId}/${lastTime}`),
     getGroupRecentMessages: (groupId: number, lastTime: number): Promise<Message[]> => get(`/wacq/v1/default/groupRecentMessages/${groupId}/${lastTime}`),
     sendPrivateMessage: (message: Message): Promise<Message> => post(`/wacq/v1/default/sendPrivateMessage`, message),
     sendGroupMessage: (message: Message): Promise<Message> => post(`/wacq/v1/default/sendGroupMessage`, message),

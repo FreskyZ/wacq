@@ -34,8 +34,7 @@ export async function uploadConfig(): Promise<void> {
 
 async function buildOnce(): Promise<void> {
     logInfo('akr', chalk`{cyan server}`);
-    await eslint(`server`, 'node', [`src/**/*.ts`]);
-    // mkdir(recursive)
+    await eslint(`server`, 'node', [`src/core/*.ts`]);
 
     const codegenResult = await codegen('server').generate();
     if (!codegenResult.success) {
@@ -56,17 +55,12 @@ async function buildOnce(): Promise<void> {
     if (!uploadResult) {
         return logCritical('akr', chalk`{cyan server} failed at upload`);
     }
-    // const adminResult = await admin.core({ type: 'auth', sub: { type: 'reload-server', app } });
-    // if (!adminResult) {
-    //     return logCritical('akr', chalk`{cyan server} failed at reload`);
-    // }
 
     logInfo('akr', chalk`{cyan server} complete successfully`);
 }
 
 function buildWatch(additionalHeader?: string) {
     logInfo(`akr${additionalHeader ?? ''}`, chalk`watch {cyan server}`);
-    // mkdir(recursive)
 
     codegen('server', additionalHeader).watch(); // no callback watch is this simple
 
