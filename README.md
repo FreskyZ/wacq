@@ -2,6 +2,10 @@
 
 A chat client implementation for a famous chat software in a large country.
 
+STATUS UPDATE: the underlying communicating service provider stops working,
+new service provider is being seeked and tried, that require a lot of work,
+the development of this project will be blocked for very long time
+
 ## Features
 
 - web based ui, clean and does not occupy mobile device storage space
